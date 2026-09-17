@@ -40,6 +40,35 @@ function valuePerShare(rev0, growth, margin, tax, capexPct, nwcPct, wacc, tg, ne
   return { enterpriseValue, equityValue, perShare, pvExplicit, pvTerminal, series };
 }
 
+function renderSensitivity(vals) {
+  const waccSteps = [-1, -0.5, 0, 0.5, 1].map(d => Math.round((vals.wacc + d) * 100) / 100);
+  const tgSteps = [-1, -0.5, 0, 0.5, 1].map(d => Math.round((vals.tg + d) * 100) / 100);
+
+  let html = "<tr><th></th>";
+  tgSteps.forEach(t => html += `<th>g=${t}%</th>`);
+  html += "</tr>";
+
+  waccSteps.forEach(w => {
+    html += `<tr><th>WACC=${w}%</th>`;
+    tgSteps.forEach(t => {
+      if (w <= t) {
+        html += "<td>—</td>";
+      } else {
+        const r = valuePerShare(
+          vals.rev0, vals.growth, vals.margin, vals.tax,
+          vals.capex, vals.nwc, w, t, vals.netdebt, vals.shares
+        );
+        const isCurrent = Math.abs(w - vals.wacc) < 0.001 && Math.abs(t - vals.tg) < 0.001;
+        const style = isCurrent ? "font-weight:bold; background:#dff0d8;" : "";
+        html += `<td style="${style}">₹${r.perShare.toFixed(1)}</td>`;
+      }
+    });
+    html += "</tr>";
+  });
+
+  document.getElementById("sensTable").innerHTML = html;
+}
+
 const ids = ["rev0","growth","margin","tax","capex","nwc","wacc","tg","netdebt","shares"];
 
 function recalculate() {
@@ -56,16 +85,14 @@ function recalculate() {
     vals.netdebt, vals.shares
   );
 
-
   document.getElementById("result").textContent =
     "Value per share: ₹" + r.perShare.toFixed(2);
+
+  renderSensitivity(vals);
 }
 
 ids.forEach(id => {
   document.getElementById(id).addEventListener("input", recalculate);
 });
 
-recalculate(); // run once on page load
-
-
-
+recalculate();
